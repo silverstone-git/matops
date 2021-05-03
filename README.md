@@ -12,7 +12,7 @@ If Python interpreter is installed (on any os), open it up and type:
 
 <b>USE AS A LIBRARY:</b>
 
-> from matops import *
+> from matops import *<br>
 > printmat(inverse([[1, 2, 3], [4, 5, 6], [7, 8, 4]]))
 to find the inverse of -->
 
