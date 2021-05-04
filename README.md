@@ -14,7 +14,8 @@ If Python interpreter is installed (on any os), open it up and type:
 
 > from matops import *<br>
 > printmat(inverse([[1, 2, 3], [4, 5, 6], [7, 8, 4]]))<br>
-to find the inverse of -->
+
+To find the inverse of :
 
 ----------
 > 1  4  7 <br>
