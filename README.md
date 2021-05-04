@@ -6,7 +6,7 @@ A Simple Matrix Manipulation Library in Python which uses the better column-numb
 
 If Python interpreter is installed (on any os), open it up and type:
 
-> import matops
+> import matops<br>
 > matops.run()
 
 
