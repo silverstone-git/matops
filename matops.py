@@ -41,7 +41,7 @@ If you are seeing details of an internal process in cmd, the function being used
 
 Project Started: 9th April 2020
 First Stable: 2nd May 2020
-Last Updated: 27th December 2020
+Last Updated: 2nd July 2021
 
 #NoImportsGangGang
 """
@@ -880,6 +880,7 @@ def eigenvalues(m1, acc = 3000):
 
         c = 0
         sorryshaktimaan = False
+        noqr = False
         while not triangcheck(m1a, tol = tolerance):
             ##############################################################
             qrtup = qrhousie(m1a)   # --> Factorize Matrix m1a to Q and R   ########## Prone to Divide by zero error
@@ -889,20 +890,20 @@ def eigenvalues(m1, acc = 3000):
                 r = qrtup[1]
             else:
                 print("Eigenvalue didn't converge, complex vectors maybe")
-                sorryshaktimaan = True
+                noqr = True # --> QR Factorization failure Flag
                 break
             m1a = coremult(r, q)   # --> Multiply RQ and then find its QR again till its triangular...
-            print("rq at the end of {}thiteration: ".format(c+1))
-            printmat(m1a)
+            #print("rq at the end of {}thiteration: ".format(c+1))
+            #printmat(m1a)
             c += 1
             if c > acc or (not m1a):
-                sorryshaktimaan = True   # --> QR Failure Flag
+                sorryshaktimaan = True   # --> QR Failure Flag due to complex values (almost triangular, but no)
                 break
 
-        if not sorryshaktimaan:
+        if not sorryshaktimaan and not noqr:
             for index in range(len(m1a)):
                 lofeigs.append(m1a[index][index])  # --> Extracting Diagonal Elements of Triangular Matrix
-        else:
+        elif sorryshaktimaan and not noqr:
             complexcase = None
             for index in range(len(m1a)):
                 if index < len(m1a[0])-1 and (mod(m1a[index][index+1]) > tolerance):
@@ -913,6 +914,8 @@ def eigenvalues(m1, acc = 3000):
                     #print("new lofeigs: ", lofeigs)
                 elif index-1 != complexcase:
                     lofeigs.append(m1a[index][index])
+        else:
+            return None
     #try:
         #printmat(m1a)
     #except:
@@ -955,9 +958,12 @@ def qrhousie(m1a):
         #print("e is: ", e)
         v = addmat(x, matscalmult((-1)**xind, matscalmult(v_norm(x), e)))
         #print("v is: ", v)
-        ################################################
-        c = 2/(coremult(transpose(v), v)[0][0])         ############ Prone to Divide by Zero error
-        ################################################
+        try:
+            ################################################
+            c = 2/(coremult(transpose(v), v)[0][0])         ############ Prone to Divide by Zero error
+            ################################################
+        except:
+            return qrhousie2(m2z)
         #print("c is: ", c)
         h = addmat(idmat(len(v[0])), matscalmult(-1, matscalmult(c, coremult(v, transpose(v)))))
         h1 = []
@@ -1012,7 +1018,83 @@ def qrhousie(m1a):
     if triangcheck(m1b, tol = 1e-5) and roundmat(qr) == roundmat(m2z):
         return (q, m1b)
     else:
+        return qrhousie2(m2z)
+
+def qrhousie2(m1a):
+    '''
+    Backup Function for qrhousie() with a slightly different approach
+    QR Decomposition using Householder reflections
+    Argument --> A Matrix in the form of a Composite list of Column Vectors
+    Returns --> A Tuple of Q and R Matrices or None if things go sideways
+    '''
+    # Use as a backup function for qrhousie
+    m2y = []
+    
+    for vec in m1a:
+        nvec = []
+        for el in vec:
+            nvec.append(el)
+        m2y.append(nvec)
+    
+    qa = idmat(len(m1a))
+    qlist = []
+    nohousie = False
+    # t = min(len(m1a[0]), len(m1a))
+    # counter = 0
+    while (not triangcheck(qa)) or (qlist == []): # counter < t:
+        x = m1a[0]
+        #print("x is: ", x)
+        e1 = [[1] + ([0]*(len(m1a[0])-1))]
+        #print("e1 is: ", e1)
+        x = [x]
+        u = addmat(x, matscalmult(-1, matscalmult(v_norm(x), e1)))
+        #print(u)
+        v = matscalmult(1/v_norm(u), u)
+        #print("v is: ", v)
+        q = addmat(idmat(len(m1a)), matscalmult(-2, coremult(v, transpose(v))))
+        #print("q is: ", q)
+        if not (len(q) == len(qa)): # and len(q[0]) == len(qa[0])):
+            q = matrixpadleft(q)
+            #print("q has been changed to: ", q)
+        qlist.append(q)
+        #print("m1 to be multiplied to is: ", m1a)
+        if len(qlist) == 1:
+            qa = coremult(q, m1a)
+        else:
+            qa = coremult(q, qa)
+        #print("q{}...q1a is: ".format(len(qlist)), qa)
+        m1a = coreminor(qa, [0,0])
+        #print("'A' for the next iteration is: ", m1a)
+        # counter += 1
+        if len(qlist) > 1000:
+            nohousie = True
+            break
+    if not nohousie:
+        q = transpose(qlist[-1])
+        for qmat in range(len(qlist)-2, -1, -1):
+            q = coremult(transpose(qlist[qmat]), q)
+        #print("\nQ:\n")
+        #printmat(q)
+        r = qa
+        #print("\nR:\n")
+        #printmat(r)
+        #print("\nRounded QR:\n")
+        qr = coremult(q, r)
+        #printmat(roundmat(qr))
+        #print("\nRounded Original Matrix")
+        #print(m2y)
+        #printmat(roundmat(m2y))
+        if triangcheck(r, tol = 1e-5) and roundmat(qr) == roundmat(m2y):
+            #print("Triangular checked and rounded mats are same")
+            return (q, r)
+        else:
+            print("\n\n--\\_(^^)_/--\n\n")
+            return None
+    else:
+        print("\n\n--\\_(^^)_/--\n\n")
         return None
+        
+        
 
 def printmat(lotups, neatness = 3):
     """
@@ -1115,8 +1197,9 @@ def run():
                     except:
                         print("Invalid input, repeating this one")
                         i -= 1
-            try:
-                sols = solveqn(coeffs)
+
+            sols = solveqn(coeffs)
+            if sols:
                 print("\nRoots: \n")
                 for sol in sols:
                     if "complex" in str(type(sol)) and sol.imag >= 0:
@@ -1126,8 +1209,9 @@ def run():
                     else:
                         print("--> {}".format(sol))
                 print("\nPython List: ", sols)
-            except:
-                print("\nDivide by zero error! ")            
+            else:
+                print ("No Solutions Found")
+
         elif inp == "2":
             print("\nThe Determinant is: \n", det(default))
         elif inp == "3":
@@ -1298,6 +1382,10 @@ def run():
             print("As Python List of column Vectors: ", default)
 
 
+#mytup = qrhousie([[200, 1312, 1451], [721, 1329, 2745], [41455, 671, 1039]])
+#for mat in mytup:
+#    printmat(mat)
+#print(mytup, type(mytup))
 #run()
 #x = input("Successful End of Program")
 
